@@ -128,7 +128,8 @@ for i, metric in enumerate(metrics):
     except:
         for j in range(4):
             axs[i, j].text(0.5, 0.5, 'Not enough data', horizontalalignment='center', verticalalignment='center', fontsize=20)
-plt.tight_layout()
+
+# plt.tight_layout()
 
 # Once the plots are ready, update the placeholder with the plots
 plot_placeholder.pyplot(fig)
