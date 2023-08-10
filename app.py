@@ -82,8 +82,11 @@ for date in datewise_percent_deltas['REVENUE'].index:
         continue
     summary_table[date.strftime("%Y-%m-%d")] = [datewise_percent_deltas[metric].get(date, np.nan) for metric in metrics]
 
-
 st.write(summary_table)
+
+# Create a placeholder for the plots
+plot_placeholder = st.empty()
+plot_placeholder.text("Decomposition & Plots Loading...")
 
 fig, axs = plt.subplots(len(metrics), 4, figsize=(30, 40))
 
@@ -111,7 +114,11 @@ for i, metric in enumerate(metrics):
         for j in range(4):
             axs[i, j].text(0.5, 0.5, 'Not enough data', horizontalalignment='center', verticalalignment='center', fontsize=20)
 plt.tight_layout()
-st.pyplot(fig)
+
+# Once the plots are ready, update the placeholder with the plots
+plot_placeholder.pyplot(fig)
+
+# st.pyplot(fig)
 
 # # Display summarized table
 # datewise_percent_deltas = {metric: [] for metric in metrics}
