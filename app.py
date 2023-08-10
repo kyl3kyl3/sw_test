@@ -23,6 +23,7 @@ device_filter = st.sidebar.selectbox('Select DEVICE', ['All'] + sorted(data['DEV
 domain_filter = st.sidebar.selectbox('Select DOMAIN', ['All'] + sorted(data['DOMAIN'].unique().tolist()))
 
 # Create a placeholder for the plots
+summary_placeholder = st.empty()
 plot_placeholder = st.empty()
 
 # Filtering the data
@@ -95,10 +96,11 @@ try:
 except Exception as e:
     st.write(f"Not enough data on selected filters.")
 
-st.write(summary_table)
-
+# st.write(summary_table)
+summary_placeholder.write(summary_table)
 # Create a placeholder for the plots
 # plot_placeholder = st.empty()
+# Display a loading message for plots
 plot_placeholder.text("Decomposition & Plots Loading...")
 
 fig, axs = plt.subplots(len(metrics), 4, figsize=(30, 40))
