@@ -69,7 +69,9 @@ summary_table = pd.DataFrame({
     'METRIC': metrics,
     'DATASOURCE': [datasource_filter] * len(metrics),
     'DOMAIN': [domain_filter] * len(metrics),
-    'AVG % DELTA': [avg_percent_deltas[metric] for metric in metrics]
+    # 'AVG % DELTA': [avg_percent_deltas[metric] for metric in metrics]
+    'AVG % DELTA': [avg_percent_deltas.get(metric, "N/A") for metric in metrics]
+
 })
 
 start_date_for_avg_delta = pd.to_datetime("2023-07-22")
