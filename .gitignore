@@ -1,0 +1,15 @@
+# Python artifacts
+*.pyc
+*.pyo
+__pycache__/
+
+# Jupyter Notebook
+*.ipynb_checkpoints
+
+# Virtual environment
+venv/
+
+# Custom files to exclude
+app_bak0.py
+app_bak1.py
+requirements.txt

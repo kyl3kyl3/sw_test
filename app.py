@@ -1,83 +1,131 @@
-
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.express as px
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 from statsmodels.tsa.seasonal import seasonal_decompose
 
-# Load the data
-@st.cache
+st.set_page_config(layout="wide")
+st.title("SW Test Results")
+st.subheader("Note that metric percentage deltas around the start of the proceeding month are excluded due to expected seasonal drops")
+# Load Data
+@st.cache_data
 def load_data():
     return pd.read_csv('COMBINED_TEST_DATA.csv')
 
 data = load_data()
 
-# Compute the %deltas based on trend values
-def compute_deltas(data, metrics, implementation_date):
-    data_agg = data.groupby('DATE')[metrics].sum()
-    df_deltas = pd.DataFrame(columns=['METRIC', 'DATE', 'TREND VALUE', '% DELTA'])
-    
-    for metric in metrics:
-        ts = data_agg[metric]
-        result = seasonal_decompose(ts, model='additive', period=7)
-        
-        for date in result.trend.index[result.trend.index > pd.to_datetime(implementation_date)]:
-            previous_value = result.trend.loc[date - pd.DateOffset(1)]
-            current_value = result.trend.loc[date]
+# Sidebar for user input filters
+st.sidebar.header('Filters')
+datasource_filter = st.sidebar.selectbox('Select DATASOURCE', ['All'] + sorted(data['DATASOURCE'].unique().tolist()))
+device_filter = st.sidebar.selectbox('Select DEVICE', ['All'] + sorted(data['DEVICE'].unique().tolist()))
+domain_filter = st.sidebar.selectbox('Select DOMAIN', ['All'] + sorted(data['DOMAIN'].unique().tolist()))
 
-            if pd.notnull(previous_value) and pd.notnull(current_value):  # Skip missing values
-                percent_diff = ((current_value - previous_value) / abs(previous_value)) * 100
-                new_row = {'METRIC': metric, 'DATE': date, 'TREND VALUE': current_value, '% DELTA': percent_diff}
-                df_deltas = df_deltas.append(new_row, ignore_index=True)
-                
-    return df_deltas
+# Filtering the data
+if datasource_filter != "All":
+    data = data[data['DATASOURCE'] == datasource_filter]
+if device_filter != "All":
+    data = data[data['DEVICE'] == device_filter]
+if domain_filter != "All":
+    data = data[data['DOMAIN'] == domain_filter]
 
-def plot_metric_deltas(df_deltas, metric):
-    metric_data = df_deltas[df_deltas['METRIC'] == metric]
-    fig = px.line(metric_data, x='DATE', y='% DELTA', title=f"% Delta Trend for {metric}")
-    return fig
+# Define test implementation start date
+implementation_date = pd.to_datetime("2023-07-21")
+data['DATE'] = pd.to_datetime(data['DATE'])
+start_date = '2023-07-22'
+# Group and calculate metrics
+grouped = data.groupby('DATE').agg({
+    'REVENUE': 'sum',
+    'PAGEVIEWS': 'sum',
+    'IMPRESSIONS': 'sum',
+    'ADREQUESTS': 'sum',
+    'VIEWABLEIMPRESSIONS': 'sum'
+}).reset_index()
+grouped['RPM'] = grouped['REVENUE'] / (grouped['PAGEVIEWS'] / 1000)
+grouped['CPM'] = grouped['REVENUE'] / (grouped['IMPRESSIONS'] / 1000)
+grouped['ADREQUESTS_PER_PAGEVIEW'] = grouped['ADREQUESTS'] / grouped['PAGEVIEWS']
+grouped['VIEWABILITY'] = grouped['VIEWABLEIMPRESSIONS'] / grouped['IMPRESSIONS']
 
-# Filter data based on user input
-def filter_data(data, datasource, device, domain):
-    if datasource:
-        data = data[data['DATASOURCE'] == datasource]
-    if device:
-        data = data[data['DEVICE'] == device]
-    if domain:
-        data = data[data['DOMAIN'] == domain]
-    return data
-
-# Streamlit UI
-st.title('Data Visualization Interface')
-
-# Dropdowns for DATASOURCE, DEVICE, and DOMAIN
-datasource = st.selectbox('Select DATASOURCE', options=['All'] + list(data['DATASOURCE'].unique()))
-device = st.selectbox('Select DEVICE', options=['All'] + list(data['DEVICE'].unique()))
-domain = st.selectbox('Select DOMAIN', options=['All'] + list(data['DOMAIN'].unique()))
-
-# Filter the data based on selections
-if datasource == 'All':
-    datasource = None
-if device == 'All':
-    device = None
-if domain == 'All':
-    domain = None
-
-filtered_data = filter_data(data, datasource, device, domain)
-
-# Compute deltas for visualization
-metrics = ['PAGEVIEWS', 'ADREQUESTS_PER_PAGEVIEW', 'REVENUE', 'RPM', 'CPM', 'IMPRESSIONS', 'VIEWABILITY']
-implementation_date = '2023-07-21'
-df_deltas = compute_deltas(filtered_data, metrics, implementation_date)
-
-# Plot and display data
-selected_metric = st.selectbox('Select METRIC for Visualization', options=metrics)
-fig = plot_metric_deltas(df_deltas, selected_metric)
-st.plotly_chart(fig)
+# Time series decomposition and visualization
+metrics = ['REVENUE', 'PAGEVIEWS', 'IMPRESSIONS', 'ADREQUESTS', 
+           'VIEWABLEIMPRESSIONS', 'RPM', 'CPM', 'ADREQUESTS_PER_PAGEVIEW', 'VIEWABILITY']
 
 # Display summarized table
-pivot_deltas = df_deltas.pivot(index='METRIC', columns='DATE', values='% DELTA').reset_index()
-pivot_deltas['DATASOURCE'] = datasource
-pivot_deltas['DOMAIN'] = domain
-avg_deltas = df_deltas.groupby('METRIC')['% DELTA'].mean()
-pivot_deltas['AVG % DELTA'] = pivot_deltas['METRIC'].map(avg_deltas)
-st.write(pivot_deltas)
+datewise_percent_deltas = {metric: [] for metric in metrics}
+avg_percent_deltas = {}
+
+for metric in metrics:
+    decomposition = seasonal_decompose(grouped.set_index('DATE')[metric], model='additive', period=7)
+    trend = decomposition.trend.dropna()
+    percent_deltas = ((trend - trend.shift(1)) / trend.shift(1) * 100).dropna()
+    avg_percent_deltas[metric] = percent_deltas.loc[implementation_date:].mean()
+    datewise_percent_deltas[metric] = percent_deltas
+
+summary_table = pd.DataFrame({
+    'METRIC': metrics,
+    'DATASOURCE': [datasource_filter] * len(metrics),
+    'DOMAIN': [domain_filter] * len(metrics),
+    'AVG % DELTA': [avg_percent_deltas[metric] for metric in metrics]
+})
+
+start_date_for_avg_delta = pd.to_datetime("2023-07-22")
+
+# for date in percent_deltas.index:
+for date in datewise_percent_deltas['REVENUE'].index:
+    if date < start_date_for_avg_delta:
+        continue
+    summary_table[date.strftime("%Y-%m-%d")] = [datewise_percent_deltas[metric].get(date, np.nan) for metric in metrics]
+
+
+st.write(summary_table)
+
+fig, axs = plt.subplots(len(metrics), 4, figsize=(30, 40))
+
+for i, metric in enumerate(metrics):
+    decomposition = seasonal_decompose(grouped.set_index('DATE')[metric], model='additive', period=7)
+    trend = decomposition.trend.dropna()
+    percent_deltas = ((trend - trend.shift(1)) / trend.shift(1) * 100).dropna()
+    avg_delta = percent_deltas.loc[implementation_date:].mean()
+    # start_date_for_avg_delta = pd.to_datetime("2023-07-01")
+    # avg_delta = percent_deltas.loc[start_date_for_avg_delta:].mean()
+
+    axs[i, 0].plot(grouped['DATE'], grouped[metric], label='Observed')
+    axs[i, 1].plot(trend.index, trend.values, label='Trend')
+    axs[i, 1].annotate(f"Avg %Δ: {avg_delta:.2f}%", (0.75, 0.75), xycoords='axes fraction', fontsize=20, color='red', bbox=dict(boxstyle='round, pad=0.5', edgecolor='black', facecolor='yellow'))
+    axs[i, 1].axvline(implementation_date, color='red', linestyle='--', label='Test Start Date')
+    axs[i, 2].plot(trend.index, decomposition.seasonal[trend.index], label='Seasonal')
+    axs[i, 3].plot(trend.index, decomposition.resid[trend.index], label='Residual')
+
+    for j in range(4):
+        # axs[i, j].legend(loc='upper left', fontsize=20)
+        axs[i, j].set_title(f"{metric} - {axs[i, j].get_legend_handles_labels()[1][0]}", fontsize=20)
+        axs[i, j].xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+plt.tight_layout()
+st.pyplot(fig)
+
+# # Display summarized table
+# datewise_percent_deltas = {metric: [] for metric in metrics}
+# avg_percent_deltas = {}
+
+# for metric in metrics:
+#     decomposition = seasonal_decompose(grouped.set_index('DATE')[metric], model='additive', period=7)
+#     trend = decomposition.trend.dropna()
+#     percent_deltas = ((trend - trend.shift(1)) / trend.shift(1) * 100).dropna()
+#     avg_percent_deltas[metric] = percent_deltas.loc[implementation_date:].mean()
+#     datewise_percent_deltas[metric] = percent_deltas
+
+# summary_table = pd.DataFrame({
+#     'METRIC': metrics,
+#     'DATASOURCE': [datasource_filter] * len(metrics),
+#     'DOMAIN': [domain_filter] * len(metrics),
+#     'AVG % DELTA': [avg_percent_deltas[metric] for metric in metrics]
+# })
+
+# for date in datewise_percent_deltas['REVENUE'].index:
+#     summary_table[date.strftime("%Y-%m-%d")] = [datewise_percent_deltas[metric].get(date, np.nan) for metric in metrics]
+
+# st.write(summary_table)
+
+# if __name__ == '__main__':
+    # st.title("Streamlit App for Data Analysis")
