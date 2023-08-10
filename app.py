@@ -86,7 +86,7 @@ if revenue_deltas is not None:
         if date < start_date_for_avg_delta:
             continue
         deltas_for_metric = datewise_percent_deltas.get(metric)
-        value = deltas_for_metric.get(date, np.nan) if deltas_for_metric else np.nan
+        value = deltas_for_metric.get(date, np.nan) if deltas_for_metric is not None else np.nan
         summary_table[date.strftime("%Y-%m-%d")] = [datewise_percent_deltas[metric].get(date, np.nan) for metric in metrics]
 
 st.write(summary_table)
