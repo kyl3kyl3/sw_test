@@ -68,6 +68,7 @@ for metric in metrics:
 summary_table = pd.DataFrame({
     'METRIC': metrics,
     'DATASOURCE': [datasource_filter] * len(metrics),
+    'DEVICE': [device_filter] * len(metrics),
     'DOMAIN': [domain_filter] * len(metrics),
     # 'AVG % DELTA': [avg_percent_deltas[metric] for metric in metrics]
     'AVG % DELTA': [avg_percent_deltas.get(metric, "N/A") for metric in metrics]
@@ -77,7 +78,8 @@ summary_table = pd.DataFrame({
 start_date_for_avg_delta = pd.to_datetime("2023-07-22")
 
 # for date in percent_deltas.index:
-for date in datewise_percent_deltas['REVENUE'].index:
+# for date in datewise_percent_deltas['REVENUE'].index:
+for date in datewise_percent_deltas.get('REVENUE', {}).index:
     if date < start_date_for_avg_delta:
         continue
     summary_table[date.strftime("%Y-%m-%d")] = [datewise_percent_deltas[metric].get(date, np.nan) for metric in metrics]
