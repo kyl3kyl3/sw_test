@@ -1,0 +1,7 @@
+python
+streamlit==1.25.0  
+pandas==2.0.3  # Adjust as needed
+numpy==1.25.2  # Adjust as needed
+plotly==5.15.0  # Adjust as needed
+matplotlib==3.7.2  # Adjust as needed
+statsmodels==0.14.0  # Adjust as needed
