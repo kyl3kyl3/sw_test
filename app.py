@@ -80,14 +80,17 @@ start_date_for_avg_delta = pd.to_datetime("2023-07-22")
 # for date in percent_deltas.index:
 # for date in datewise_percent_deltas['REVENUE'].index:
 revenue_deltas = datewise_percent_deltas.get('REVENUE')
-if revenue_deltas is not None:
-    # for date in datewise_percent_deltas.get('REVENUE', {}).index:
-    for date in revenue_deltas.index:
-        if date < start_date_for_avg_delta:
-            continue
-        deltas_for_metric = datewise_percent_deltas.get(metric)
-        value = deltas_for_metric.get(date, np.nan) if deltas_for_metric is not None else np.nan
-        summary_table[date.strftime("%Y-%m-%d")] = [datewise_percent_deltas[metric].get(date, np.nan) for metric in metrics]
+try:
+    if revenue_deltas is not None:
+        # for date in datewise_percent_deltas.get('REVENUE', {}).index:
+        for date in revenue_deltas.index:
+            if date < start_date_for_avg_delta:
+                continue
+            deltas_for_metric = datewise_percent_deltas.get(metric)
+            value = deltas_for_metric.get(date, np.nan) if deltas_for_metric is not None else np.nan
+            summary_table[date.strftime("%Y-%m-%d")] = [datewise_percent_deltas[metric].get(date, np.nan) for metric in metrics]
+except Exception as e:
+    st.write(f"Not enough data on selected filters.")
 
 st.write(summary_table)
 
