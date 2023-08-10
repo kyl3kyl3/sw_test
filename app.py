@@ -22,6 +22,9 @@ datasource_filter = st.sidebar.selectbox('Select DATASOURCE', ['All'] + sorted(d
 device_filter = st.sidebar.selectbox('Select DEVICE', ['All'] + sorted(data['DEVICE'].unique().tolist()))
 domain_filter = st.sidebar.selectbox('Select DOMAIN', ['All'] + sorted(data['DOMAIN'].unique().tolist()))
 
+# Create a placeholder for the plots
+plot_placeholder = st.empty()
+
 # Filtering the data
 if datasource_filter != "All":
     data = data[data['DATASOURCE'] == datasource_filter]
@@ -95,7 +98,7 @@ except Exception as e:
 st.write(summary_table)
 
 # Create a placeholder for the plots
-plot_placeholder = st.empty()
+# plot_placeholder = st.empty()
 plot_placeholder.text("Decomposition & Plots Loading...")
 
 fig, axs = plt.subplots(len(metrics), 4, figsize=(30, 40))
