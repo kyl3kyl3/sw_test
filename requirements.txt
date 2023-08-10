@@ -1,4 +1,4 @@
-python
+# python
 streamlit==1.25.0  
 pandas==2.0.3  # Adjust as needed
 numpy==1.25.2  # Adjust as needed
